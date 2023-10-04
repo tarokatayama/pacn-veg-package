@@ -1,0 +1,81 @@
+---
+title: "Exploration1"
+output: html_document
+date: "2023-10-03"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+
+library(pacnvegetation)
+library(tidyverse)
+#library(magrittr)
+
+#pathname
+pacnveg_cache_path <- "C:/Users/tkatayama/OneDrive - DOI/Desktop/Pacn/R_WritePACNVeg"
+
+# Read
+path_file_info <- file.info(list.files(pacnveg_cache_path, full.names = T))
+latest_folder <- rownames(path_file_info)[which.max(path_file_info$mtime)]
+
+LoadPACNVeg(data_path = latest_folder,
+            data_source = "file")
+
+# Warning message about parsing issues will display - I need to update a section of package
+# Message can be ignored.
+
+# All Focal Terrestrial Plant Community (FTPC) and
+# Established Invasive Plant Species (EIPS) are now loaded in R session
+
+#Use FilterPACNVeg() to see the different datasets
+names(FilterPACNVeg())
+
+#Then get dataset:
+FilterPACNVeg(data_name = "LgTrees")
+
+LgTreeOlaa <- pacnvegetation::FilterPACNVeg(data_name = "LgTrees", sample_frame = "Olaa")
+
+filterLGTreeOlaa<- LgTreeOlaa%>%
+  group_by(Year,Scientific_Name, Nativity)%>%
+  summarise(Count = n())%>%
+  filter(!is.na(Scientific_Name))%>%
+  mutate(year= as.Date(paste0(Year, "-01-01")))%>%
+  subset(Nativity !='Unknown')
+
+ggplot(filterLGTreeOlaa, aes(x=year, y=Count, color=Scientific_Name))+ geom_line()+
+  facet_wrap(~ Nativity,nrow = 1)
+
+```
+
+```{r}
+LgTree<- FilterPACNVeg(data_name = "LgTrees")
+
+filterLGTree<- LgTree%>%
+  group_by(Unit_Code, Sampling_Frame, Year, Scientific_Name, Life_Form, Nativity)%>%
+  summarise(Count=n())%>%
+  drop_na(Scientific_Name)
+
+
+MostAbundant<- filterLGTree%>%
+  group_by(Sampling_Frame, Scientific_Name)%>%
+  summarise(Max_Value = max(Count))
+
+
+MostAbundantOrder<- order(MostAbundant$Sampling_Frame)
+sorted_dataset<- MostAbundant[MostAbundantOrder,]
+
+unique_frames <- unique(sorted_dataset$Sampling_Frame)
+
+selected_row <- data.frame()
+
+#creating a for loop that selects rows that have most common species in each sampling frame
+for (frame in unique_frames){
+  subset_df<- sorted_dataset[sorted_dataset$Sampling_Frame == frame, ]
+  max_species_row<- subset_df[which.max(subset_df$Max_Value),]
+  selected_row<- append(selected_row, max_species_row)
+}
+
+selected_row
+```
+
